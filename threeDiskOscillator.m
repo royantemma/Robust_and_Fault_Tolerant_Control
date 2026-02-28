@@ -22,7 +22,43 @@ T_s = 0.004;
 % Sampling period
 sigma_meas = 0.0093*eye(3);     % Measurements covariance matrix
 
+
+% Utilities 
+s = tf("s");
+%% Residual generator design
+
+% Design of characteristic polynomial
+f_c = 10; % Hz - Desired cut-off frequency
+w_n = 2*pi*f_c;
+zeta = 1 / sqrt(2);
+
+G = w_n^2 / (s^2 + 2*zeta*w_n*s + w_n^2);
+figure;
+bode(G)
+figure;
+step(G)
+
+% Residuals with Filter in laplace domain
+G_r1y2 = (s^2 + b_2/J_2*s + (k_1+k_2)/J_2)*G;
+G_r1y1 = -(k_1/J_2)*G;
+G_r1u2 = -(1/J_2)*G;
+
+G_r2y3 = (s^2 + b_3/J_3*s + (k_2)/J_3)*G;
+G_r2y2 = -(k_2/J_3)*G;
+
+% Discretize 
+G_r1y2_d = c2d(G_r1y2,T_s)
+G_r1y1_d = c2d(G_r1y1,T_s)
+G_r1u2_d = c2d(G_r1u2,T_s)
+G_r2y3_d = c2d(G_r2y3,T_s)
+G_r2y2_d = c2d(G_r2y2,T_s)
+
+
+
+
+
 %% State space representation
+close all;
 A = [ 0 1 0 0 0 0
       k_1/J_1 b_1/J_1 -k_1/J_1 0 0 0
       0 0 0 1 0 0
@@ -59,10 +95,10 @@ F_y = [ 0 0 1 0 0
         0 0 0 0 1];
 
 sys = ss(A,B,C,D);
+% step(sys)
 
 %%%%%%%% SKIP THAT WHEN SIMULATING IN OPEN LOOP %%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Discrete time
-Ts = 4*10^-3;
 sys_d = c2d(sys,Ts);
 F_d = sys_d.A;
 G_d = sys_d.B;
