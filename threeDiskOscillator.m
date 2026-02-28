@@ -58,9 +58,12 @@ F_y = [ 0 0 1 0 0
         0 0 0 1 0
         0 0 0 0 1];
 
+sys = ss(A,B,C,D);
+
 %%%%%%%% SKIP THAT WHEN SIMULATING IN OPEN LOOP %%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Discrete time
-sys_d = [];
+Ts = 4*10^-3;
+sys_d = c2d(sys,Ts);
 F_d = sys_d.A;
 G_d = sys_d.B;
 
