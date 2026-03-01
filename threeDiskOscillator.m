@@ -19,6 +19,7 @@ w_th = 0.75;                    % Threshold angular velocity rad/s
 % The system states are [theta_1;omega_1;theta_2;omega_2;theta_3;omega_3]
 x_0 = [0;0;0;0;0;0];            % Initial conditions
 T_s = 0.004;
+simTime = 200;
 % Sampling period
 sigma_meas = 0.0093*eye(3);     % Measurements covariance matrix
 
@@ -28,8 +29,9 @@ s = tf("s");
 %% Residual generator design
 
 % Design of characteristic polynomial
-f_c = 10; % Hz - Desired cut-off frequency
+f_c = 1; % Hz - Desired cut-off frequency
 w_n = 2*pi*f_c;
+w_n2 = w_n^2;
 zeta = 1 / sqrt(2);
 
 G = w_n^2 / (s^2 + 2*zeta*w_n*s + w_n^2);
@@ -41,21 +43,19 @@ step(G)
 % Residuals with Filter in laplace domain
 G_r1y2 = (s^2 + b_2/J_2*s + (k_1+k_2)/J_2)*G;
 G_r1y1 = -(k_1/J_2)*G;
+G_r1y3 = -(k_2/J_2)*G;
 G_r1u2 = -(1/J_2)*G;
 
 G_r2y3 = (s^2 + b_3/J_3*s + (k_2)/J_3)*G;
 G_r2y2 = -(k_2/J_3)*G;
 
 % Discretize 
-G_r1y2_d = c2d(G_r1y2,T_s)
-G_r1y1_d = c2d(G_r1y1,T_s)
-G_r1u2_d = c2d(G_r1u2,T_s)
-G_r2y3_d = c2d(G_r2y3,T_s)
-G_r2y2_d = c2d(G_r2y2,T_s)
-
-
-
-
+G_r1y2_d = c2d(G_r1y2,T_s, 'tustin');
+G_r1y1_d = c2d(G_r1y1,T_s, 'tustin');
+G_r1y3_d = c2d(G_r1y3,T_s, 'tustin');
+G_r1u2_d = c2d(G_r1u2,T_s, 'tustin');
+G_r2y3_d = c2d(G_r2y3,T_s, 'tustin');
+G_r2y2_d = c2d(G_r2y2,T_s, 'tustin');
 
 %% State space representation
 close all;
@@ -99,7 +99,6 @@ sys = ss(A,B,C,D);
 
 %%%%%%%% SKIP THAT WHEN SIMULATING IN OPEN LOOP %%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Discrete time
-sys_d = c2d(sys,Ts);
 F_d = sys_d.A;
 G_d = sys_d.B;
 
