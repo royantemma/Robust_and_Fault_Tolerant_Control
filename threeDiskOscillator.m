@@ -26,8 +26,72 @@ sigma_meas = 0.0093*eye(3);     % Measurements covariance matrix
 
 % Utilities 
 s = tf("s");
-%% Residual generator design
 
+
+%% State space representation
+close all;
+A = [ 0 1 0 0 0 0
+      -k_1/J_1 -b_1/J_1 k_1/J_1 0 0 0
+      0 0 0 1 0 0
+      k_1/J_2 0 -(k_1+k_2)/J_2 -b_2/J_2 k_2/J_2 0
+      0 0 0 0 0 1
+      0 0 k_2/J_3 0 -k_2/J_3 -b_3/J_3];
+
+B = [ 0 0
+      1 0
+      0 0
+      0 1
+      0 0
+      0 0];
+
+C = [  1 0 0 0 0 0
+       0 0 1 0 0 0
+       0 0 0 0 1 0 ];
+
+D = zeros(3,2);
+
+E_x = [ 0; 1; 0; 0; 0; 0 ];
+
+E_y = [ 0; 0; 0 ];
+
+F_x = [ 0 0 0 0 0 0 
+        1/J_1 0 0 0 0 0 
+        0 0 0 0 0 0 
+        0 1/J_2 0 0 0 0 
+        0 0 0 0 0 0 
+        0 0 0 0 0 0 ];
+
+F_y = [ 0 0 1 0 0
+        0 0 0 1 0
+        0 0 0 0 1];
+
+sys = ss(A,B,C,D);
+% step(sys)
+sys_d = c2d(sys, T_s, 'tustin');
+
+%%%%%%%% SKIP THAT WHEN SIMULATING IN OPEN LOOP %%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Discrete time
+F_d = sys_d.A;
+G_d = sys_d.B;
+
+% State-feedback LQR design
+Q_c = diag([2 0 2 0 2.5 0.0024]);
+R_c = diag([10 10]);
+K_c = [];
+
+% Scaling of reference
+C_ref = [];
+
+% Kalman filter with friction estimation - DO NOT MODIFY
+F_aug = [F_d G_d(:,1);zeros(1,6) 1];
+G_aug = [G_d;0 0];
+C_aug = [C zeros(3,1)];
+% Kalman gain
+L_aug = dlqe(F_aug,eye(7),C_aug,1e-3*eye(7),sigma_meas(1,1).^2*eye(3));
+L_o = L_aug(1:6,:);
+L_d = L_aug(7,:);
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Residual filter design
 % Design of characteristic polynomial
 f_c = 1; % Hz - Desired cut-off frequency
 w_n = 2*pi*f_c;
@@ -139,72 +203,6 @@ title('New Residuals')
 ylabel('Residual Value')
 xlabel('Time (s)')
 xlim([0 T_s*length(u_1)])
-
-%% State space representation
-close all;
-A = [ 0 1 0 0 0 0
-      k_1/J_1 b_1/J_1 -k_1/J_1 0 0 0
-      0 0 0 1 0 0
-      -k_1/J_2 0 (k_1+k_2)/J_2 b_2/J_2 -k_2/J_2 0
-      0 0 0 0 0 1
-      0 0 -k_2/J_3 0 k_2/J_3 b_3/J_3];
-
-B = [ 0 0
-      1 0
-      0 0
-      0 1
-      0 0
-      0 0];
-
-C = [  1 0 0 0 0 0
-       0 0 1 0 0 0
-       0 0 0 0 1 0 ];
-
-D = zeros(3,2);
-
-E_x = [ 0; 1; 0; 0; 0; 0 ];
-
-E_y = [ 0; 0; 0 ];
-
-F_x = [ 0 0 0 0 0 0 
-        1/J_1 0 0 0 0 0 
-        0 0 0 0 0 0 
-        0 1/J_2 0 0 0 0 
-        0 0 0 0 0 0 
-        0 0 0 0 0 0 ];
-
-F_y = [ 0 0 1 0 0
-        0 0 0 1 0
-        0 0 0 0 1];
-
-sys = ss(A,B,C,D);
-% step(sys)
-sys_d = c2d(sys, T_s, 'tustin');
-
-%%%%%%%% SKIP THAT WHEN SIMULATING IN OPEN LOOP %%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Discrete time
-F_d = sys_d.A;
-G_d = sys_d.B;
-
-% State-feedback LQR design
-Q_c = diag([2 0 2 0 2.5 0.0024]);
-R_c = diag([10 10]);
-K_c = [];
-
-% Scaling of reference
-C_ref = [];
-
-% Kalman filter with friction estimation - DO NOT MODIFY
-F_aug = [F_d G_d(:,1);zeros(1,6) 1];
-G_aug = [G_d;0 0];
-C_aug = [C zeros(3,1)];
-% Kalman gain
-L_aug = dlqe(F_aug,eye(7),C_aug,1e-3*eye(7),sigma_meas(1,1).^2*eye(3));
-L_o = L_aug(1:6,:);
-L_d = L_aug(7,:);
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Residual filter design
-
 %% Strong and weak detectability
 H_rf = tf(0);
 
