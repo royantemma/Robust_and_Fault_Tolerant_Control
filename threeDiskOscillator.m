@@ -34,11 +34,11 @@ w_n = 2*pi*f_c;
 w_n2 = w_n^2;
 zeta = 1 / sqrt(2);
 
-G = w_n^2 / (s^2 + 2*zeta*w_n*s + w_n^2);
-figure;
-bode(G)
-figure;
-step(G)
+G = w_n^2 / ((s^2 + 2*zeta*w_n*s + w_n^2)*(s+zeta*w_n)^2);
+% figure;
+% bode(G)
+% figure;
+% step(G)
 
 % Residuals with Filter in laplace domain
 G_r1y2 = (s^2 + b_2/J_2*s + (k_1+k_2)/J_2)*G;
@@ -56,6 +56,29 @@ G_r1y3_d = c2d(G_r1y3,T_s, 'tustin');
 G_r1u2_d = c2d(G_r1u2,T_s, 'tustin');
 G_r2y3_d = c2d(G_r2y3,T_s, 'tustin');
 G_r2y2_d = c2d(G_r2y2,T_s, 'tustin');
+
+% Linearcombinations of residuals
+a = -(1/J_2);
+b = -(k_1/J_2);
+c = (s^2 + b_2/J_2*s + (k_1+k_2)/J_2);
+d = -(k_2/J_2);
+e = -(k_2/J_3);
+f = (s^2 + b_3/J_3*s + (k_2)/J_3);
+
+G_r3y1 = b*G;
+G_r3y3 = (d-c*f/e)*G;
+G_r3u2 = a*G;
+
+G_r4y1 = -f/d*b*G;
+G_r4y2 = (e-f*c/d)*G;
+G_r4u2 = -f/d*a*G;
+
+G_r3y1_d = c2d(G_r3y1,T_s, 'tustin');
+G_r3y3_d = c2d(G_r3y3,T_s, 'tustin');
+G_r3u2_d = c2d(G_r3u2,T_s, 'tustin');
+G_r4y1_d = c2d(G_r4y1,T_s, 'tustin');
+G_r4y2_d = c2d(G_r4y2,T_s, 'tustin');
+G_r4u2_d = c2d(G_r4u2,T_s, 'tustin');
 
 %% Question 3: Experimental Data
 close all;
@@ -104,18 +127,19 @@ xlabel('Time (s)')
 xlim([0 T_s*length(u_1)])
 
 subplot(4,1,4)
-r_1 = lsim(G_r1y2_d,y_meas(:,2)) + lsim(G_r1y1_d,y_meas(:,1),t) + lsim(G_r1y3_d,y_meas(:,3),t) + lsim(G_r1u2_d,u_2,t); 
-r_2 = lsim(G_r2y3_d,y_meas(:,3),t) + lsim(G_r2y2_d,y_meas(:,2),t);
+r_3 = lsim(G_r3y1_d,y_meas(:,1)) + lsim(G_r3y3_d,y_meas(:,3),t) + lsim(G_r3u2_d,u_2,t); 
+r_4 = lsim(G_r4y1_d,y_meas(:,1)) + lsim(G_r4y2_d,y_meas(:,2),t) + lsim(G_r4u2_d,u_2,t); 
 hold on;
 grid on;
-plot(t,r_1)
-plot(t,r_2)
+plot(t,r_3)
+plot(t,r_4)
 hold off;
-legend({'r_1','r_2'})
+legend({'r_3','r_4'})
 title('New Residuals')
 ylabel('Residual Value')
 xlabel('Time (s)')
 xlim([0 T_s*length(u_1)])
+
 %% State space representation
 close all;
 A = [ 0 1 0 0 0 0
@@ -155,6 +179,7 @@ F_y = [ 0 0 1 0 0
 
 sys = ss(A,B,C,D);
 % step(sys)
+sys_d = c2d(sys, T_s, 'tustin');
 
 %%%%%%%% SKIP THAT WHEN SIMULATING IN OPEN LOOP %%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Discrete time
