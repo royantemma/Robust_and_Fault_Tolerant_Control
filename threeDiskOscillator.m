@@ -58,7 +58,7 @@ G_r2y3_d = c2d(G_r2y3,T_s, 'tustin');
 G_r2y2_d = c2d(G_r2y2,T_s, 'tustin');
 
 %% Question 3: Experimental Data
-
+close all;
 % Load in data
 data = load("ECP502Data.mat");
 t = data.t;
@@ -69,19 +69,53 @@ y_meas = data.y_meas;
 % Plotting
 close all;
 figure;
-subplot(2,1,1)
+subplot(4,1,1)
 plot(t,y_meas)
 legend({'y_1','y_2','y_3'})
 title('Measured y-values')
+ylabel('Sensor Measurements')
+xlabel('Time (s)')
 grid on;
-subplot(2,1,2)
+xlim([0 T_s*length(u_1)])
+subplot(4,1,2)
 hold on;
 plot(t,u_1)
 plot(t,u_2)
 hold off;
 legend({'u_1','u_2'})
 title('Given Inputs')
+xlim([0 T_s*length(u_1)])
+ylabel('Input Torque (Nm)')
+xlabel('Time (s)')
 grid on;
+
+subplot(4,1,3)
+r_1 = lsim(G_r1y2_d,y_meas(:,2)) + lsim(G_r1y1_d,y_meas(:,1),t) + lsim(G_r1y3_d,y_meas(:,3),t) + lsim(G_r1u2_d,u_2,t); 
+r_2 = lsim(G_r2y3_d,y_meas(:,3),t) + lsim(G_r2y2_d,y_meas(:,2),t);
+hold on;
+grid on;
+plot(t,r_1)
+plot(t,r_2)
+hold off;
+legend({'r_1','r_2'})
+title('Residuals')
+ylabel('Residual Value')
+xlabel('Time (s)')
+xlim([0 T_s*length(u_1)])
+
+subplot(4,1,4)
+r_1 = lsim(G_r1y2_d,y_meas(:,2)) + lsim(G_r1y1_d,y_meas(:,1),t) + lsim(G_r1y3_d,y_meas(:,3),t) + lsim(G_r1u2_d,u_2,t); 
+r_2 = lsim(G_r2y3_d,y_meas(:,3),t) + lsim(G_r2y2_d,y_meas(:,2),t);
+hold on;
+grid on;
+plot(t,r_1)
+plot(t,r_2)
+hold off;
+legend({'r_1','r_2'})
+title('New Residuals')
+ylabel('Residual Value')
+xlabel('Time (s)')
+xlim([0 T_s*length(u_1)])
 %% State space representation
 close all;
 A = [ 0 1 0 0 0 0
