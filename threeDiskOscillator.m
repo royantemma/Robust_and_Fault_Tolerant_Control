@@ -57,6 +57,31 @@ G_r1u2_d = c2d(G_r1u2,T_s, 'tustin');
 G_r2y3_d = c2d(G_r2y3,T_s, 'tustin');
 G_r2y2_d = c2d(G_r2y2,T_s, 'tustin');
 
+%% Question 3: Experimental Data
+
+% Load in data
+data = load("ECP502Data.mat");
+t = data.t;
+u_1 = data.u_1;
+u_2 = data.u_2;
+y_meas = data.y_meas;
+
+% Plotting
+close all;
+figure;
+subplot(2,1,1)
+plot(t,y_meas)
+legend({'y_1','y_2','y_3'})
+title('Measured y-values')
+grid on;
+subplot(2,1,2)
+hold on;
+plot(t,u_1)
+plot(t,u_2)
+hold off;
+legend({'u_1','u_2'})
+title('Given Inputs')
+grid on;
 %% State space representation
 close all;
 A = [ 0 1 0 0 0 0
