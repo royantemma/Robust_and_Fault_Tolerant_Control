@@ -19,10 +19,9 @@ w_th = 0.75;                    % Threshold angular velocity rad/s
 % The system states are [theta_1;omega_1;theta_2;omega_2;theta_3;omega_3]
 x_0 = [0;0;0;0;0;0];            % Initial conditions
 T_s = 0.004;
-simTime = 200;
+
 % Sampling period
 sigma_meas = 0.0093*eye(3);     % Measurements covariance matrix
-
 
 % Utilities 
 s = tf("s");
@@ -203,6 +202,7 @@ title('New Residuals')
 ylabel('Residual Value')
 xlabel('Time (s)')
 xlim([0 T_s*length(u_1)])
+
 %% Strong and weak detectability
 clc;
 % Finding H_rf
@@ -252,7 +252,40 @@ end
 
 %% GLR
 f_m = [0;-0.025;0];     % Sensor fault vector (added to [y1;y2;y3])
-h = 0;                  % Put the threshold from GLR here
+
+% Threshold h
+mu_0 = 0;
+sigma = 0.1;    % TO FIND
+
+P_F = 1e-4;
+
+syms zz gg;     % zz is the integrant variable, gg is h in symbolic
+% Gamma distribution parameters
+k = 1/2;
+theta = 2;
+% Density function expression
+pd_zz = 1/(theta^k*gamma(k))*zz^(k-1)*exp(-zz/theta);
+p_zz = int(pd_zz,zz,2*gg,Inf);  % Integrate over the probability space
+eq_1 = P_F - p_zz == 0;  % Equation to be solved
+h = double(vpasolve(eq_1,gg));  % Convert to double
+% check
+p_calc = double(int(pd_zz,zz,2*h,Inf));
+disp(P_F - p_calc);
+
+disp(h - chi2inv(1 - P_F,1)/2); % Compare with the other method
+
+% Window size M
+f2 = -0.025;
+
+for M = 1:500
+    lambda = M*f2^2/sigma;
+    P_M = ncx2cdf(h,1,lambda);
+    if P_M <= 0.01
+        break
+    end
+end
+
+M
 
 %% Virtual actuator
 % Failure in actuator 2
