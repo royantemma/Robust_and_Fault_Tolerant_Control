@@ -54,16 +54,16 @@ E_x = [ 0; 1; 0; 0; 0; 0 ];
 
 E_y = [ 0; 0; 0 ];
 
-F_x = [ 0 0 0 0 0 0 
-        1/J_1 0 0 0 0 0 
-        0 0 0 0 0 0 
-        0 1/J_2 0 0 0 0 
-        0 0 0 0 0 0 
-        0 0 0 0 0 0 ];
+F_x = [ 0 0 0 0 0;
+        0 0 0 1/J_1 0; 
+        0 0 0 0 0; 
+        0 0 0 0 1/J_2; 
+        0 0 0 0 0; 
+        0 0 0 0 0];
 
-F_y = [ 0 0 1 0 0
-        0 0 0 1 0
-        0 0 0 0 1];
+F_y = [1 0 0 0 0
+       0 1 0 0 0
+       0 0 1 0 0];
 
 sys = ss(A,B,C,D);
 % step(sys)
@@ -204,7 +204,51 @@ ylabel('Residual Value')
 xlabel('Time (s)')
 xlim([0 T_s*length(u_1)])
 %% Strong and weak detectability
-H_rf = tf(0);
+clc;
+% Finding H_rf
+% H_rf = V_ry * H_yf
+H_yf = C * (s*eye(6)-A)^-1 * F_x + F_y;
+
+G_r2y1 = 0;
+G_r3y2 = 0;
+G_r4y3 = 0;
+G_r1u1 = 0;
+G_r2u1 = 0;
+G_r2u2 = 0;
+G_r3u1 = 0;
+G_r4u1 = 0;
+
+
+V_ry = [G_r1y1 G_r1y2 G_r1y3;
+        G_r2y1 G_r2y2 G_r2y3;
+        G_r3y1 G_r3y2 G_r3y3;
+        G_r4y1 G_r4y2 G_r4y3;];
+
+H_rf = V_ry*H_yf;
+
+H_rf = minreal(H_rf);
+
+% Investigate Weak Detectability
+% None column of Hyf should be able to be written as a linear
+% combination of the columns in H_yd
+H_yd = C * (s*eye(6)-A)^-1 * E_x + E_y;
+
+% F(s) = [V_ry  V_ru]
+V_ru = [G_r1u1 G_r1u2;
+        G_r2u1 G_r2u2;
+        G_r3u1 G_r3u2;
+        G_r4u1 G_r4u2;];
+F = [V_ry V_ru];
+weak_detectability = zeros(5,1);
+strong_detectability = zeros(5,1);
+
+
+for i = 1:5
+    %H_yf_i = H_yf(:,i);
+    %weak_detectability(i) = rank([H_yd H_yf(:,i)]) > rank(H_yd);
+    %disp(dcgain([H_yf(:,i);0;0]));
+    strong_detectability(i) = any(dcgain([H_yf(:,i); 0; 0]) ~= 0);
+end
 
 %% GLR
 f_m = [0;-0.025;0];     % Sensor fault vector (added to [y1;y2;y3])
