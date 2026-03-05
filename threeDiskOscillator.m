@@ -97,7 +97,8 @@ w_n = 2*pi*f_c;
 w_n2 = w_n^2;
 zeta = 1 / sqrt(2);
 
-G = w_n^2 / ((s^2 + 2*zeta*w_n*s + w_n^2)*(s+zeta*w_n)^2);
+G = w_n^2 / (s^2 + 2*zeta*w_n*s + w_n^2);
+G_lc = G /((s+zeta*w_n)^2);
 % figure;
 % bode(G)
 % figure;
@@ -128,13 +129,13 @@ d = -(k_2/J_2);
 e = -(k_2/J_3);
 f = (s^2 + b_3/J_3*s + (k_2)/J_3);
 
-G_r3y1 = b*G;
-G_r3y3 = (d-c*f/e)*G;
-G_r3u2 = a*G;
+G_r3y1 = b*G_lc;
+G_r3y3 = (d-c*f/e)*G_lc;
+G_r3u2 = a*G_lc;
 
-G_r4y1 = -f/d*b*G;
-G_r4y2 = (e-f*c/d)*G;
-G_r4u2 = -f/d*a*G;
+G_r4y1 = -f/d*b*G_lc;
+G_r4y2 = (e-f*c/d)*G_lc;
+G_r4u2 = -f/d*a*G_lc;
 
 G_r3y1_d = c2d(G_r3y1,T_s, 'tustin');
 G_r3y3_d = c2d(G_r3y3,T_s, 'tustin');
@@ -255,7 +256,7 @@ f_m = [0;-0.025;0];     % Sensor fault vector (added to [y1;y2;y3])
 
 % Threshold h
 mu_0 = 0;
-sigma = 0.1;    % TO FIND
+sigma_r2 = 0.1;    % TO FIND
 
 P_F = 1e-4;
 
@@ -270,22 +271,19 @@ eq_1 = P_F - p_zz == 0;  % Equation to be solved
 h = double(vpasolve(eq_1,gg));  % Convert to double
 % check
 p_calc = double(int(pd_zz,zz,2*h,Inf));
-disp(P_F - p_calc);
-
-disp(h - chi2inv(1 - P_F,1)/2); % Compare with the other method
+%disp(P_F - p_calc);
+%disp(h - chi2inv(1 - P_F,1)/2); % Compare with the other method
 
 % Window size M
-f2 = -0.025;
+f2 = f_m(2);
 
 for M = 1:500
-    lambda = M*f2^2/sigma;
+    lambda = M*f2^2/sigma_r2;
     P_M = ncx2cdf(h,1,lambda);
     if P_M <= 0.01
         break
     end
 end
-
-M
 
 %% Virtual actuator
 % Failure in actuator 2
