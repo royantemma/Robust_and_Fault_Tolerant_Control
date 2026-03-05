@@ -93,7 +93,7 @@ L_d = L_aug(7,:);
 
 %% Residual filter design
 % Design of characteristic polynomial
-f_c = 1; % Hz - Desired cut-off frequency
+f_c = 0.5; % Hz - Desired cut-off frequency
 w_n = 2*pi*f_c;
 w_n2 = w_n^2;
 zeta = 1 / sqrt(2);
@@ -210,6 +210,89 @@ xlim([0 T_s*length(u_1)])
 
 %% Strong and weak detectability
 clc;
+syms s
+% Constuct symbolic tf's
+[n_yu1,d_yu1] = ss2tf(A,B,C,D,1);
+[n_yu2,d_yu2] = ss2tf(A,B,C,D,2);
+[n_yd,d_yd] = ss2tf(A,E_x,C,E_y);
+[n_yf1,d_yf1] = ss2tf(A,F_x,C,F_y,1);
+[n_yf2,d_yf2] = ss2tf(A,F_x,C,F_y,2);
+[n_yf3,d_yf3] = ss2tf(A,F_x,C,F_y,3);
+[n_yf4,d_yf4] = ss2tf(A,F_x,C,F_y,4);
+[n_yf5,d_yf5] = ss2tf(A,F_x,C,F_y,5);
+
+
+
+function H = tf_from_numden(n,d,s)
+    
+    [m, ~] = size(n);
+    H = sym(zeros(m,1));
+    for i = 1:m
+        num = poly2sym(n(i,:), s);
+        
+        if size(d, 1) > 1
+            den = poly2sym(d(i,:), s);
+        else
+            den = poly2sym(d, s);
+        end
+        
+        H(i) = num / den;
+    end
+end
+
+H_yu1 = tf_from_numden(n_yu1,d_yu1,s);
+H_yu2 = tf_from_numden(n_yu2,d_yu2,s);
+H_yu = [H_yu1 H_yu2];
+
+H_yd = tf_from_numden(n_yd,d_yd,s);
+
+
+H_yf1 = tf_from_numden(n_yf1,d_yf1,s);
+H_yf2 = tf_from_numden(n_yf2,d_yf2,s);
+H_yf3 = tf_from_numden(n_yf3,d_yf3,s);
+H_yf4 = tf_from_numden(n_yf4,d_yf4,s);
+H_yf5 = tf_from_numden(n_yf5,d_yf5,s);
+
+H_yf = [H_yf1 H_yf2 H_yf3 H_yf4 H_yf5];
+
+H = [H_yu H_yd;
+     eye(size(H_yu,2)) zeros(size(H_yu,2),size(H_yd,2))];
+
+F = null(H')';
+
+% V_ry = F(:,1:size(H_yu,1));
+% H_yf = V_ry * 
+
+weak_detectability = zeros(5,1);
+strong_detectability = zeros(5,1);
+for i = 1:5
+    weak_detectability(i) = rank([H_yd H_yf(:,i)]) > rank(H_yd);
+    strong_detectability(i) = any(limit(F*[H_yf(:,i); 0; 0],s,inf) ~= 0);
+end
+disp("Case Disturbance: Unknown")
+weak_detectability
+strong_detectability
+
+disp("Case Disturbance: Known (Modelled as an input")
+
+H_yu_dasinput = [H_yu1 H_yu2 H_yd];
+H_yd_dasinput = zeros(3,1);
+H_dasinput = [H_yu_dasinput H_yd_dasinput;
+     eye(size(H_yu_dasinput,2)) zeros(size(H_yu_dasinput,2),size(H_yd_dasinput,2))];
+
+F_dasinput = null(H_dasinput')';
+
+weak_detectability = zeros(5,1);
+strong_detectability = zeros(5,1);
+for i = 1:5
+    weak_detectability(i) = rank([H_yd H_yf(:,i)]) > rank(H_yd);
+    strong_detectability(i) = any(limit(F_dasinput*[H_yf(:,i); 0; 0;0;],s,inf) ~= 0);
+end
+
+weak_detectability
+strong_detectability
+
+%{
 % Finding H_rf
 % H_rf = V_ry * H_yf
 H_yf = C * (s*eye(6)-A)^-1 * F_x + F_y;
@@ -252,9 +335,10 @@ for i = 1:5
     %H_yf_i = H_yf(:,i);
     %weak_detectability(i) = rank([H_yd H_yf(:,i)]) > rank(H_yd);
     %disp(dcgain([H_yf(:,i);0;0]));
-    strong_detectability(i) = any(dcgain([H_yf(:,i); 0; 0]) ~= 0);
+    strong_detectability(i) = any(dcgain(F*[H_yf(:,i); 0; 0]) ~= 0);
 end
-
+strong_detectability
+%}
 %% GLR
 f_m = [0;-0.025;0];     % Sensor fault vector (added to [y1;y2;y3])
 % r2_nofault = out.r_nofault.Data(:,2);
@@ -317,4 +401,6 @@ sim('threeDiskOscillatorRig');
 set(0,'DefaultTextInterpreter','latex');
 set(0,'DefaultAxesFontSize',20);
 set(0,'DefaultLineLineWidth', 2);
+
+
 
