@@ -90,6 +90,7 @@ L_aug = dlqe(F_aug,eye(7),C_aug,1e-3*eye(7),sigma_meas(1,1).^2*eye(3));
 L_o = L_aug(1:6,:);
 L_d = L_aug(7,:);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 %% Residual filter design
 % Design of characteristic polynomial
 f_c = 1; % Hz - Desired cut-off frequency
@@ -152,6 +153,9 @@ t = data.t;
 u_1 = data.u_1;
 u_2 = data.u_2;
 y_meas = data.y_meas;
+
+u1_ts = timeseries(u_1, t);
+u2_ts = timeseries(u_2, t);
 
 % Plotting
 close all;
@@ -253,10 +257,11 @@ end
 
 %% GLR
 f_m = [0;-0.025;0];     % Sensor fault vector (added to [y1;y2;y3])
+% r2_nofault = out.r_nofault.Data(:,2);
 
 % Threshold h
-mu_0 = 0;
-sigma_r2 = 0.1;    % TO FIND
+mu_0 = 7.1438e-05; % mean(r2_nofault);
+sigma_r2 = 0.1353; % var(r2_nofault);
 
 P_F = 1e-4;
 
@@ -268,16 +273,15 @@ theta = 2;
 pd_zz = 1/(theta^k*gamma(k))*zz^(k-1)*exp(-zz/theta);
 p_zz = int(pd_zz,zz,2*gg,Inf);  % Integrate over the probability space
 eq_1 = P_F - p_zz == 0;  % Equation to be solved
-h = double(vpasolve(eq_1,gg));  % Convert to double
+h = double(vpasolve(eq_1,gg))  % Convert to doublef_m
 % check
 p_calc = double(int(pd_zz,zz,2*h,Inf));
 %disp(P_F - p_calc);
-%disp(h - chi2inv(1 - P_F,1)/2); % Compare with the other method
-
+%disp(h - chi2inv(1 - P_F,1)/2); % Compare with the other methodw
 % Window size M
 f2 = f_m(2);
 
-for M = 1:500
+for M = 1:10000
     lambda = M*f2^2/sigma_r2;
     P_M = ncx2cdf(h,1,lambda);
     if P_M <= 0.01
@@ -301,7 +305,7 @@ detect_time = f_u_time + 3.75;
 f_u = [0;0];                    % Actuator fault vector (added to [u1;u2])
 u_fault = 0;                    % Disable VA meachanism
 f_m_time = 8.5;                 % Sensor fault occurence time
-sim('threeDiskOscillatorRig');
+%sim('threeDiskOscillatorRig');
 
 %% Simulation for actuator fault (f_m = 0)
 f_u = [0;-0.1];                 % Actuator fault vector (added to [u1;u2])
