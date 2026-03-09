@@ -155,7 +155,11 @@ u_2 = data.u_2;
 y_meas = data.y_meas;
 
 u1_ts = timeseries(u_1, t);
+%u1_ts = setinterpmethod(u1_ts,'zoh');
 u2_ts = timeseries(u_2, t);
+%u2_ts = setinterpmethod(u2_ts,'zoh');
+y_meas_ts = timeseries(y_meas, t);
+y_meas_ts = setinterpmethod(y_meas_ts,'zoh');
 
 % Plotting
 close all;
@@ -181,7 +185,7 @@ xlabel('Time (s)')
 grid on;
 
 subplot(4,1,3)
-r_1 = lsim(G_r1y2_d,y_meas(:,2)) + lsim(G_r1y1_d,y_meas(:,1),t) + lsim(G_r1y3_d,y_meas(:,3),t) + lsim(G_r1u2_d,u_2,t); 
+r_1 = lsim(G_r1y2_d,y_meas(:,2),t) + lsim(G_r1y1_d,y_meas(:,1),t) + lsim(G_r1y3_d,y_meas(:,3),t) + lsim(G_r1u2_d,u_2,t); 
 r_2 = lsim(G_r2y3_d,y_meas(:,3),t) + lsim(G_r2y2_d,y_meas(:,2),t);
 hold on;
 grid on;
@@ -195,8 +199,8 @@ xlabel('Time (s)')
 xlim([0 T_s*length(u_1)])
 
 subplot(4,1,4)
-r_3 = lsim(G_r3y1_d,y_meas(:,1)) + lsim(G_r3y3_d,y_meas(:,3),t) + lsim(G_r3u2_d,u_2,t); 
-r_4 = lsim(G_r4y1_d,y_meas(:,1)) + lsim(G_r4y2_d,y_meas(:,2),t) + lsim(G_r4u2_d,u_2,t); 
+r_3 = lsim(G_r3y1_d,y_meas(:,1),t) + lsim(G_r3y3_d,y_meas(:,3),t) + lsim(G_r3u2_d,u_2,t); 
+r_4 = lsim(G_r4y1_d,y_meas(:,1),t) + lsim(G_r4y2_d,y_meas(:,2),t) + lsim(G_r4u2_d,u_2,t); 
 hold on;
 grid on;
 plot(t,r_3)
@@ -339,13 +343,46 @@ for i = 1:5
 end
 strong_detectability
 %}
+
+%% Variance of r2
+H = [G_r2y2, G_r2y3];
+
+sys_r = ss(G_r2y2);
+
+A_r = sys_r.A;
+B_r = sys_r.B;
+Q_w = sigma_meas(2,2)
+
+Q = lyap(A_r,B_r*Q_w*B_r');
+
+C_r = sys_r.C
+D_r = sys_r.D
+
+sigma_r21 = C_r*Q*C_r' + D_r*Q_w*D_r'
+
+sys_r = ss(G_r2y3);
+
+A_r = sys_r.A;
+B_r = sys_r.B;
+Q_w = sigma_meas(2,2)
+
+Q = lyap(A_r,B_r*Q_w*B_r');
+
+C_r = sys_r.C
+D_r = sys_r.D
+
+sigma_r22 = C_r*Q*C_r' + D_r*Q_w*D_r'
+
+sigma_r2 = sigma_r21 + sigma_r22
+
+
 %% GLR
 f_m = [0;-0.025;0];     % Sensor fault vector (added to [y1;y2;y3])
-% r2_nofault = out.r_nofault.Data(:,2);
+%r2_nofault = out.r_nofault.Data(:,2);
 
 % Threshold h
-mu_0 = 7.1438e-05; % mean(r2_nofault);
-sigma_r2 = 0.1353; % var(r2_nofault);
+mu_0 = 0.0016; %mean(r2_nofault)
+sigma_r2 = 0.0087; %var(r2_nofault)
 
 P_F = 1e-4;
 
@@ -365,13 +402,19 @@ p_calc = double(int(pd_zz,zz,2*h,Inf));
 % Window size M
 f2 = f_m(2);
 
-for M = 1:10000
+h = 7.5684
+
+P_M = 0.01;
+
+for M = 1:500
     lambda = M*f2^2/sigma_r2;
-    P_M = ncx2cdf(h,1,lambda);
-    if P_M <= 0.01
+    P_D = ncx2cdf(h,1,lambda);
+    if P_D <= 1-P_M
         break
     end
 end
+
+M
 
 %% Virtual actuator
 % Failure in actuator 2
