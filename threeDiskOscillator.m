@@ -380,7 +380,46 @@ va_eig_d = [];  % Discrete time eigenvalues
 va_eig = log(va_eig_d)/T_s;     % Continuous time eigenvalues
 % Then discretise your VA
 
-B_change = [1 0;0 0];
+%B_change = [1 0;0 0];
+
+B_f = [B(:,1), zeros(size(B,1),1)];
+
+% Discretization
+fsys = ss(A,B_f,C,D);
+fsys_d = c2d(sys,T_s);
+
+G_f = fsys_d.B;
+if rank(B_f) == rank([B B_f])
+    disp('Perfect static matching for actuator fault');
+else
+    disp('Imperfect static matching for actuator fault');
+end
+
+fS_c = ctrb(A,B_f);
+fS_o = obsv(A,C);
+if rank(fS_c) == size(A,1)
+    disp('Faulty system is controllable');
+else
+    disp('Faulty system is not controllable');
+end
+
+% Continuous time
+va_eig = log(eig(F - G*K_c))/T_s;
+M = place(A,B_f,va_eig);
+A_D = A - B_f*M;
+N_D = pinv(B_f)*B;
+B_D = B - B_f*N_D;
+C_D = C;
+
+% Discrete time
+va_eig_d = exp(va_eig*T_s);
+M_d = place(F,G_f,va_eig_d);
+F_D = F - G_f*M_d;
+N_D_d = pinv(G_f)*G_f;
+G_D = G - G_f*N_D_d;
+C_D = C;
+
+
 
 %% Simulation for sensor fault (f_u = 0)
 simTime = 45;                   % Simulation duration in seconds
