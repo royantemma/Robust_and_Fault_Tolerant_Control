@@ -66,20 +66,27 @@ F_y = [1 0 0 0 0
 
 sys = ss(A,B,C,D);
 % step(sys)
-sys_d = c2d(sys, T_s, 'tustin');
-
+sys_d = c2d(sys, T_s,'tustin');
+sys_d_cont = c2d(sys, T_s);
 %%%%%%%% SKIP THAT WHEN SIMULATING IN OPEN LOOP %%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Discrete time
-F_d = sys_d.A;
-G_d = sys_d.B;
+F_d = sys_d_cont.A;
+G_d = sys_d_cont.B;
 
 % State-feedback LQR design
 Q_c = diag([2 0 2 0 2.5 0.0024]);
 R_c = diag([10 10]);
 K_c = dlqr(F_d,G_d,Q_c,R_c);
+% Check closed loop stability
+disp("LQR - CL poles")
+eig(F_d-G_d*K_c)
+
+cl_sys = ss(F_d-G_d*K_c,G_d,C,0,T_s);
+pzmap(cl_sys)
 
 % Scaling of reference
 C_ref = pinv(C(3,:)/(eye(6) - F_d + G_d*K_c)*G_d*K_c); % reference scaling (V in the slides)
+
 
 % Kalman filter with friction estimation - DO NOT MODIFY
 F_aug = [F_d G_d(:,1);zeros(1,6) 1];
@@ -93,7 +100,7 @@ L_d = L_aug(7,:);
 
 %% Residual filter design
 % Design of characteristic polynomial
-f_c = 0.5; % Hz - Desired cut-off frequency
+f_c = 10; % Hz - Desired cut-off frequency
 w_n = 2*pi*f_c;
 w_n2 = w_n^2;
 zeta = 1 / sqrt(2);
@@ -423,7 +430,7 @@ va_eig_d = [];  % Discrete time eigenvalues
 va_eig = log(va_eig_d)/T_s;     % Continuous time eigenvalues
 % Then discretise your VA
 
-%B_change = [1 0;0 0];
+B_change = [1 0;0 0];
 
 B_f = [B(:,1), zeros(size(B,1),1)];
 
@@ -447,19 +454,19 @@ else
 end
 
 % Continuous time
-va_eig = log(eig(F - G*K_c))/T_s;
-M = place(A,B_f,va_eig);
-A_D = A - B_f*M;
+va_eig = log(eig(F_d - G_d*K_c))/T_s;
+M_va = place(A,B_f,va_eig);
+A_D = A - B_f*M_va;
 N_D = pinv(B_f)*B;
 B_D = B - B_f*N_D;
 C_D = C;
 
 % Discrete time
 va_eig_d = exp(va_eig*T_s);
-M_d = place(F,G_f,va_eig_d);
-F_D = F - G_f*M_d;
+M_d_va = place(F_d,G_f,va_eig_d);
+F_D = F_d - G_f*M_d_va;
 N_D_d = pinv(G_f)*G_f;
-G_D = G - G_f*N_D_d;
+G_D = G_d - G_f*N_D_d;
 C_D = C;
 
 
@@ -477,8 +484,8 @@ f_m_time = 8.5;                 % Sensor fault occurence time
 f_u = [0;-0.1];                 % Actuator fault vector (added to [u1;u2])
 u_fault = 1;                    % Enable VA meachanism
 f_m = [0;0;0];                  % Sensor fault vector (added to [y1;y2;y3])
-sim('threeDiskOscillatorRig');
-
+sim('threeDiskOscillatorRigNew');
+% threeDiskOscillatorRigNew.slx
 %% Plot settings
 set(0,'DefaultTextInterpreter','latex');
 set(0,'DefaultAxesFontSize',20);
