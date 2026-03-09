@@ -76,10 +76,10 @@ G_d = sys_d.B;
 % State-feedback LQR design
 Q_c = diag([2 0 2 0 2.5 0.0024]);
 R_c = diag([10 10]);
-K_c = [];
+K_c = dlqr(F_d,G_d,Q_c,R_c);
 
 % Scaling of reference
-C_ref = [];
+C_ref = pinv(C(3,:)/(eye(6) - F_d + G_d*K_c)*G_d*K_c); % reference scaling (V in the slides)
 
 % Kalman filter with friction estimation - DO NOT MODIFY
 F_aug = [F_d G_d(:,1);zeros(1,6) 1];
