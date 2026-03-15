@@ -26,7 +26,6 @@ sigma_meas = 0.0093*eye(3);     % Measurements covariance matrix
 % Utilities 
 s = tf("s");
 
-
 %% State space representation
 close all;
 A = [ 0 1 0 0 0 0
@@ -37,9 +36,9 @@ A = [ 0 1 0 0 0 0
       0 0 k_2/J_3 0 -k_2/J_3 -b_3/J_3];
 
 B = [ 0 0
-      1 0
+      1/J_1 0
       0 0
-      0 1
+      0 1/J_2
       0 0
       0 0];
 
@@ -100,13 +99,16 @@ L_d = L_aug(7,:);
 
 %% Residual filter design
 % Design of characteristic polynomial
-f_c = 10; % Hz - Desired cut-off frequency
+f_c = 2; % Hz - Desired cut-off frequency
 w_n = 2*pi*f_c;
 w_n2 = w_n^2;
 zeta = 1 / sqrt(2);
 
 G = w_n^2 / (s^2 + 2*zeta*w_n*s + w_n^2);
-G_lc = G /((s+zeta*w_n)^2);
+A1 = 1 / (1 + 1.847*s + s^2);
+A2 = 1 / (1 + 0.7654*s + s^2);
+G_lc = G * w_n^2/((s+zeta*w_n)^2);
+%G = G_lc;
 % figure;
 % bode(G)
 % figure;
@@ -170,7 +172,7 @@ y_meas_ts = setinterpmethod(y_meas_ts,'zoh');
 
 % Plotting
 close all;
-figure;
+figure(Name="Residuals on Exprerimental Data",Color='w');
 subplot(4,1,1)
 plot(t,y_meas)
 legend({'y_1','y_2','y_3'})
@@ -232,7 +234,46 @@ syms s
 [n_yf4,d_yf4] = ss2tf(A,F_x,C,F_y,4);
 [n_yf5,d_yf5] = ss2tf(A,F_x,C,F_y,5);
 
+% Construct all-symbolic tfs
+syms k_1_sym k_2_sym J_1_sym J_2_sym J_3_sym b_1_sym b_2_sym b_3_sym
+A_sym = [ 0 1 0 0 0 0
+      -k_1_sym/J_1_sym -b_1_sym/J_1_sym k_1_sym/J_1_sym 0 0 0
+      0 0 0 1 0 0
+      k_1_sym/J_2_sym 0 -(k_1_sym+k_2_sym)/J_2_sym -b_2_sym/J_2_sym k_2_sym/J_2_sym 0
+      0 0 0 0 0 1
+      0 0 k_2_sym/J_3_sym 0 -k_2_sym/J_3_sym -b_3_sym/J_3_sym];
 
+B_sym = [ 0 0
+      1/J_1_sym 0
+      0 0
+      0 1/J_2_sym
+      0 0
+      0 0];
+
+C_sym = [  1 0 0 0 0 0
+       0 0 1 0 0 0
+       0 0 0 0 1 0 ];
+
+D_sym = zeros(3,2);
+
+E_x_sym = [ 0; 1; 0; 0; 0; 0 ];
+
+E_y_sym = [ 0; 0; 0 ];
+
+F_x_sym = [ 0 0 0 0 0;
+        0 0 0 1/J_1_sym 0; 
+        0 0 0 0 0; 
+        0 0 0 0 1/J_2_sym; 
+        0 0 0 0 0; 
+        0 0 0 0 0];
+
+F_y_sym = [1 0 0 0 0
+       0 1 0 0 0
+       0 0 1 0 0];
+
+H_yu_sym = C_sym*(s*eye(size(A_sym))-A_sym)^-1*B_sym+D_sym;
+H_yd_sym = C_sym*(s*eye(size(A_sym))-A_sym)^-1*E_x_sym+E_y_sym;
+H_yf_sym = C_sym*(s*eye(size(A_sym))-A_sym)^-1*F_x_sym+F_y_sym;
 
 function H = tf_from_numden(n,d,s)
     
@@ -266,19 +307,24 @@ H_yf5 = tf_from_numden(n_yf5,d_yf5,s);
 
 H_yf = [H_yf1 H_yf2 H_yf3 H_yf4 H_yf5];
 
+
 H = [H_yu H_yd;
      eye(size(H_yu,2)) zeros(size(H_yu,2),size(H_yd,2))];
 
 F = null(H')';
 
-% V_ry = F(:,1:size(H_yu,1));
+V_ry = F(:,1:size(H_yu,1));
+
+H_rf = simplify(V_ry * H_yf);
+
+H_rf = find_minimum_realization(H_rf)
 % H_yf = V_ry * 
 
 weak_detectability = zeros(5,1);
 strong_detectability = zeros(5,1);
 for i = 1:5
     weak_detectability(i) = rank([H_yd H_yf(:,i)]) > rank(H_yd);
-    strong_detectability(i) = any(limit(F*[H_yf(:,i); 0; 0],s,inf) ~= 0);
+    strong_detectability(i) = any(limit(F*[H_yf(:,i); 0; 0],s,0) ~= 0);
 end
 disp("Case Disturbance: Unknown")
 weak_detectability
@@ -296,13 +342,71 @@ F_dasinput = null(H_dasinput')';
 weak_detectability = zeros(5,1);
 strong_detectability = zeros(5,1);
 for i = 1:5
-    weak_detectability(i) = rank([H_yd H_yf(:,i)]) > rank(H_yd);
-    strong_detectability(i) = any(limit(F_dasinput*[H_yf(:,i); 0; 0;0;],s,inf) ~= 0);
+    weak_detectability(i) = rank([H_yd_dasinput H_yf(:,i)]) > rank(H_yd_dasinput);
+    strong_detectability(i) = any(limit(F_dasinput*[H_yf(:,i); 0; 0;0;],s,0) ~= 0);
 end
 
 weak_detectability
 strong_detectability
 
+
+
+
+%% All symbolic approach
+H_sym = [H_yu_sym H_yd_sym;
+        eye(size(H_yu_sym,2)) zeros(size(H_yu_sym,2),size(H_yd_sym,2))];
+F_sym = null(H_sym')'; 
+
+V_ry_sym = F_sym(:,1:size(H_yu_sym,1));
+V_ru_sym = F_sym(:,size(H_yu_sym,1)+1:end);
+H_rf_sym = simplify(V_ry_sym * H_yf_sym)
+
+function H = find_minimum_realization(H_sym)
+    H = tf(zeros(size(H_sym)));
+    for m = 1:size(H_sym,1)
+        for n = 1:size(H_sym,2)
+            tf_sym = H_sym(m,n);
+            [num_sym, den_sym] = numden(tf_sym);
+            num = sym2poly(num_sym);
+            den = sym2poly(den_sym);
+            tf_s = tf(num,den);
+            tf_s = minreal(tf_s);
+            H(m,n) = tf_s;
+        end
+    end
+end
+
+%% 
+
+weak_detectability = zeros(5,1);
+strong_detectability = zeros(5,1);
+for i = 1:5
+    weak_detectability(i) = rank([H_yd_sym H_yf_sym(:,i)]) > rank(H_yd_sym);
+    strong_detectability(i) = any(limit(F_sym*[H_yf_sym(:,i); 0; 0],s,0) ~= 0);
+end
+disp("Symbolic Case Disturbance: Unknown")
+weak_detectability
+strong_detectability
+%%
+disp("Symbolic Case Disturbance: Known (Modelled as an input")
+
+H_yu_dasinput_sym = [H_yu_sym H_yd_sym];
+H_yd_dasinput_sym = zeros(3,1);
+H_dasinput_sym = [H_yu_dasinput_sym H_yd_dasinput_sym;
+     eye(size(H_yu_dasinput_sym,2)) zeros(size(H_yu_dasinput_sym,2),size(H_yd_dasinput_sym,2))];
+
+F_dasinput_sym = null(H_dasinput_sym')';
+
+weak_detectability = zeros(5,1);
+strong_detectability = zeros(5,1);
+for i = 1:5
+    weak_detectability(i) = rank([H_yd_dasinput_sym H_yf_sym(:,i)]) > rank(H_yd_dasinput_sym);
+    strong_detectability(i) = any(limit(F_dasinput_sym*[H_yf_sym(:,i); 0; 0;0;],s,0) ~= 0);
+end
+
+weak_detectability
+strong_detectability
+%}
 %{
 % Finding H_rf
 % H_rf = V_ry * H_yf
