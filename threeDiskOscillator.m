@@ -66,7 +66,7 @@ F_y = [1 0 0 0 0
 sys = ss(A,B,C,D);
 % step(sys)
 sys_d = c2d(sys, T_s,'tustin');
-sys_d_cont = c2d(sys, T_s);
+sys_d_cont = c2d(sys, T_s,'tustin');
 %%%%%%%% SKIP THAT WHEN SIMULATING IN OPEN LOOP %%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Discrete time
 F_d = sys_d_cont.A;
@@ -391,9 +391,10 @@ strong_detectability
 disp("Symbolic Case Disturbance: Known (Modelled as an input")
 
 H_yu_dasinput_sym = [H_yu_sym H_yd_sym];
-H_yd_dasinput_sym = zeros(3,1);
+H_yd_dasinput_sym = []; %zeros(3,1);
 H_dasinput_sym = [H_yu_dasinput_sym H_yd_dasinput_sym;
-     eye(size(H_yu_dasinput_sym,2)) zeros(size(H_yu_dasinput_sym,2),size(H_yd_dasinput_sym,2))];
+     eye(size(H_yu_dasinput_sym,2)) []%zeros(size(H_yu_dasinput_sym,2),size(H_yd_dasinput_sym,2))
+     ];
 
 F_dasinput_sym = null(H_dasinput_sym')';
 
@@ -406,6 +407,9 @@ end
 
 weak_detectability
 strong_detectability
+
+V_ry_dasinput_sym = F_dasinput_sym(:,1:size(H_yu_dasinput_sym,1));
+H_rf_dasinput_sym = simplify(V_ry_dasinput_sym * H_yf_sym);
 %}
 %{
 % Finding H_rf
@@ -455,22 +459,25 @@ end
 strong_detectability
 %}
 
-%% Variance of r2
-H = [G_r2y2, G_r2y3];
+%% Variance of residual 2
+H_r2 = [G_r2y2_d, G_r2y3_d] % In discrete time
 
-sys_r = ss(G_r2y2);
+sys_r = ss(H_r2);
 
 A_r = sys_r.A;
 B_r = sys_r.B;
-Q_w = sigma_meas(2,2)
+Q_w = sigma_meas(2:3,2:3).^2
 
-Q = lyap(A_r,B_r*Q_w*B_r');
+
+Q = dlyap(A_r, B_r*Q_w*B_r'); 
+
 
 C_r = sys_r.C
 D_r = sys_r.D
 
-sigma_r21 = C_r*Q*C_r' + D_r*Q_w*D_r'
+sigma_r2 = C_r*Q*C_r' + D_r*Q_w*D_r'
 
+%{
 sys_r = ss(G_r2y3);
 
 A_r = sys_r.A;
@@ -486,7 +493,7 @@ sigma_r22 = C_r*Q*C_r' + D_r*Q_w*D_r'
 
 sigma_r2 = sigma_r21 + sigma_r22
 
-
+%}
 %% GLR
 f_m = [0;-0.025;0];     % Sensor fault vector (added to [y1;y2;y3])
 %r2_nofault = out.r_nofault.Data(:,2);
@@ -558,7 +565,7 @@ else
 end
 
 % Continuous time
-va_eig = log(eig(F_d - G_d*K_c))/T_s;
+va_eig = log(eig(F_d - G_d*K_c))/T_s; 
 M_va = place(A,B_f,va_eig);
 A_D = A - B_f*M_va;
 N_D = pinv(B_f)*B;
