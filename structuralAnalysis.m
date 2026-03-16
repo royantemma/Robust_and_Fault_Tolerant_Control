@@ -55,7 +55,7 @@ ST_cons(3,:) = {...
     0 == y3 - theta3};
 
 ST_canfail  = [1:6,13:15];
-ST_domains  = ones(1,length(ST_cons(1,:))); % ???
+ST_domains  = ones(1,length(ST_cons(1,:)));
 
 % Automatic incMatrix generation
 cons_oneway = {[],[],[],[],[],[],{theta1(t)},{omega1(t)},{theta2(t)},{omega2(t)},{theta3(t)},{omega3(t)},[],[],[]};

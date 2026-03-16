@@ -2,6 +2,7 @@ clear all;
 close all;
 clc;
 load('ECP_values.mat');
+
 % Physical system parameters
 J_1 = ECP_values(1);            % Disk 1 inertia kgm^2
 J_2 = ECP_values(2);            % Disk 2 inertia kgm^2
@@ -67,6 +68,7 @@ sys = ss(A,B,C,D);
 % step(sys)
 sys_d = c2d(sys, T_s,'tustin');
 sys_d_cont = c2d(sys, T_s,'tustin');
+
 %%%%%%%% SKIP THAT WHEN SIMULATING IN OPEN LOOP %%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Discrete time
 F_d = sys_d_cont.A;
@@ -99,16 +101,14 @@ L_d = L_aug(7,:);
 
 %% Residual filter design
 % Design of characteristic polynomial
-f_c = 2; % Hz - Desired cut-off frequency
+f_c = 3; % Hz - Desired cut-off frequency
 w_n = 2*pi*f_c;
 w_n2 = w_n^2;
 zeta = 1 / sqrt(2);
 
-G = w_n^2 / (s^2 + 2*zeta*w_n*s + w_n^2);
-A1 = 1 / (1 + 1.847*s + s^2);
-A2 = 1 / (1 + 0.7654*s + s^2);
+G = w_n^2*J_3 / (s^2 + 2*zeta*w_n*s + w_n^2);
 G_lc = G * w_n^2/((s+zeta*w_n)^2);
-%G = G_lc;
+
 % figure;
 % bode(G)
 % figure;
@@ -156,6 +156,7 @@ G_r4u2_d = c2d(G_r4u2,T_s, 'tustin');
 
 %% Question 3: Experimental Data
 close all;
+
 % Load in data
 data = load("ECP502Data.mat");
 t = data.t;
@@ -164,9 +165,7 @@ u_2 = data.u_2;
 y_meas = data.y_meas;
 
 u1_ts = timeseries(u_1, t);
-%u1_ts = setinterpmethod(u1_ts,'zoh');
 u2_ts = timeseries(u_2, t);
-%u2_ts = setinterpmethod(u2_ts,'zoh');
 y_meas_ts = timeseries(y_meas, t);
 y_meas_ts = setinterpmethod(y_meas_ts,'zoh');
 
@@ -327,8 +326,8 @@ for i = 1:5
     strong_detectability(i) = any(limit(F*[H_yf(:,i); 0; 0],s,0) ~= 0);
 end
 disp("Case Disturbance: Unknown")
-weak_detectability
-strong_detectability
+weak_detectability;
+strong_detectability;
 
 disp("Case Disturbance: Known (Modelled as an input")
 
@@ -346,11 +345,8 @@ for i = 1:5
     strong_detectability(i) = any(limit(F_dasinput*[H_yf(:,i); 0; 0;0;],s,0) ~= 0);
 end
 
-weak_detectability
-strong_detectability
-
-
-
+weak_detectability;
+strong_detectability;
 
 %% All symbolic approach
 H_sym = [H_yu_sym H_yd_sym;
@@ -377,7 +373,6 @@ function H = find_minimum_realization(H_sym)
 end
 
 %% 
-
 weak_detectability = zeros(5,1);
 strong_detectability = zeros(5,1);
 for i = 1:5
@@ -385,8 +380,8 @@ for i = 1:5
     strong_detectability(i) = any(limit(F_sym*[H_yf_sym(:,i); 0; 0],s,0) ~= 0);
 end
 disp("Symbolic Case Disturbance: Unknown")
-weak_detectability
-strong_detectability
+weak_detectability;
+strong_detectability;
 %%
 disp("Symbolic Case Disturbance: Known (Modelled as an input")
 
@@ -405,106 +400,41 @@ for i = 1:5
     strong_detectability(i) = any(limit(F_dasinput_sym*[H_yf_sym(:,i); 0; 0;0;],s,0) ~= 0);
 end
 
-weak_detectability
-strong_detectability
+weak_detectability;
+strong_detectability;
 
 V_ry_dasinput_sym = F_dasinput_sym(:,1:size(H_yu_dasinput_sym,1));
 H_rf_dasinput_sym = simplify(V_ry_dasinput_sym * H_yf_sym);
-%}
-%{
-% Finding H_rf
-% H_rf = V_ry * H_yf
-H_yf = C * (s*eye(6)-A)^-1 * F_x + F_y;
 
-G_r2y1 = 0;
-G_r3y2 = 0;
-G_r4y3 = 0;
-G_r1u1 = 0;
-G_r2u1 = 0;
-G_r2u2 = 0;
-G_r3u1 = 0;
-G_r4u1 = 0;
-
-
-V_ry = [G_r1y1 G_r1y2 G_r1y3;
-        G_r2y1 G_r2y2 G_r2y3;
-        G_r3y1 G_r3y2 G_r3y3;
-        G_r4y1 G_r4y2 G_r4y3;];
-
-H_rf = V_ry*H_yf;
-
-H_rf = minreal(H_rf);
-
-% Investigate Weak Detectability
-% None column of Hyf should be able to be written as a linear
-% combination of the columns in H_yd
-H_yd = C * (s*eye(6)-A)^-1 * E_x + E_y;
-
-% F(s) = [V_ry  V_ru]
-V_ru = [G_r1u1 G_r1u2;
-        G_r2u1 G_r2u2;
-        G_r3u1 G_r3u2;
-        G_r4u1 G_r4u2;];
-F = [V_ry V_ru];
-weak_detectability = zeros(5,1);
-strong_detectability = zeros(5,1);
-
-
-for i = 1:5
-    %H_yf_i = H_yf(:,i);
-    %weak_detectability(i) = rank([H_yd H_yf(:,i)]) > rank(H_yd);
-    %disp(dcgain([H_yf(:,i);0;0]));
-    strong_detectability(i) = any(dcgain(F*[H_yf(:,i); 0; 0]) ~= 0);
-end
-strong_detectability
-%}
 
 %% Variance of residual 2
-H_r2 = [G_r2y2_d, G_r2y3_d] % In discrete time
+H = [G_r2y2_d, G_r2y3_d];
 
-sys_r = ss(H_r2);
+H   = ss(H);
 
-A_r = sys_r.A;
-B_r = sys_r.B;
-Q_w = sigma_meas(2:3,2:3).^2
+A_d = H.A;
+B_d = H.B;
+C_d = H.C;
+D_d = H.D;
 
+Q_w = (0.0093^2) * eye(2);
 
-Q = dlyap(A_r, B_r*Q_w*B_r'); 
+Q = lyap(A_d, B_d * Q_w * B_d');
+var_r2 = C_d * Q * C_d' + D_d * Q_w * D_d'
 
-
-C_r = sys_r.C
-D_r = sys_r.D
-
-sigma_r2 = C_r*Q*C_r' + D_r*Q_w*D_r'
-
-%{
-sys_r = ss(G_r2y3);
-
-A_r = sys_r.A;
-B_r = sys_r.B;
-Q_w = sigma_meas(2,2)
-
-Q = lyap(A_r,B_r*Q_w*B_r');
-
-C_r = sys_r.C
-D_r = sys_r.D
-
-sigma_r22 = C_r*Q*C_r' + D_r*Q_w*D_r'
-
-sigma_r2 = sigma_r21 + sigma_r22
-
-%}
 %% GLR
 f_m = [0;-0.025;0];     % Sensor fault vector (added to [y1;y2;y3])
+
 %r2_nofault = out.r_nofault.Data(:,2);
 
-% Threshold h
-mu_0 = 0.0016; %mean(r2_nofault)
-sigma_r2 = 0.0087; %var(r2_nofault)
+mu_0 = -6.2064e-07; %mean(r2_nofault)
+sigma_r2 = 3.6238e-05 %var(r2_nofault)
 
 P_F = 1e-4;
+P_M = 0.01;
 
-syms zz gg;     % zz is the integrant variable, gg is h in symbolic
+% Threshold h
+syms zz gg;
 % Gamma distribution parameters
 k = 1/2;
 theta = 2;
@@ -512,19 +442,16 @@ theta = 2;
 pd_zz = 1/(theta^k*gamma(k))*zz^(k-1)*exp(-zz/theta);
 p_zz = int(pd_zz,zz,2*gg,Inf);  % Integrate over the probability space
 eq_1 = P_F - p_zz == 0;  % Equation to be solved
-h = double(vpasolve(eq_1,gg))  % Convert to doublef_m
+h = double(vpasolve(eq_1,gg));  % Convert to doublef_m
 % check
 p_calc = double(int(pd_zz,zz,2*h,Inf));
-%disp(P_F - p_calc);
-%disp(h - chi2inv(1 - P_F,1)/2); % Compare with the other methodw
+disp(P_F - p_calc);
+disp(h - chi2inv(1 - P_F,1)/2); % Compare with the other methodw
+
 % Window size M
 f2 = f_m(2);
 
-h = 7.5684
-
-P_M = 0.01;
-
-for M = 1:500
+for M = 1:5000
     lambda = M*f2^2/sigma_r2;
     P_D = ncx2cdf(h,1,lambda);
     if P_D <= 1-P_M
@@ -532,7 +459,38 @@ for M = 1:500
     end
 end
 
-M
+%% Simulation : Test GLR
+
+N = 10; % number of Monte Carlo runs
+false_alarms = 0;
+missed_detections = 0;
+
+for k = 1:N
+    
+    disp(k)
+    sensorSeed = k;
+    set_param('GLR5/Plant with sensors/Sensor noise','Seed',num2str(sensorSeed));
+    
+    % Run simulation (fault-free)
+    simOut = sim('GLR5', 'SimulationMode', 'normal', ...
+                 'SrcWorkspace', 'current');
+    
+    H_GLR_signal = simOut.get('H_GLR'); 
+    
+    for t = 1:11251
+
+        if H_GLR_signal.Data(t)
+            false_alarms = false_alarms + 1;
+        end
+    end
+    
+end
+
+P_FA = false_alarms*T_s / (N*45);
+P_MD = missed_detections / N;
+
+fprintf('False alarm probability: %.6f\n', P_FA);
+fprintf('Missed detection probability: %.6f\n', P_MD);
 
 %% Virtual actuator
 % Failure in actuator 2
@@ -580,8 +538,6 @@ N_D_d = pinv(G_f)*G_f;
 G_D = G_d - G_f*N_D_d;
 C_D = C;
 
-
-
 %% Simulation for sensor fault (f_u = 0)
 simTime = 45;                   % Simulation duration in seconds
 f_u_time = 25;                  % Actuator fault occurence time
@@ -597,10 +553,8 @@ u_fault = 1;                    % Enable VA meachanism
 f_m = [0;0;0];                  % Sensor fault vector (added to [y1;y2;y3])
 sim('threeDiskOscillatorRigNew');
 % threeDiskOscillatorRigNew.slx
+
 %% Plot settings
 set(0,'DefaultTextInterpreter','latex');
 set(0,'DefaultAxesFontSize',20);
 set(0,'DefaultLineLineWidth', 2);
-
-
-
