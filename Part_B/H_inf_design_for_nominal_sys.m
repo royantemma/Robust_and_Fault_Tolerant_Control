@@ -54,6 +54,52 @@ D_td = zeros(1,1);
 
 G_td = tf(num_td, den_td);
 
-% Mixed sensitivity setup
+%% Mixed sensitivity setup
+close all;
 % It is going to be difficult and take some time - start simple and
 % increase the order of the weight function 2nd or maybe higher
+
+omega_B = 3;
+A = 10^-9;
+M = 1;
+W_P = (s/M + omega_B)/(s+omega_B*A);
+W_K = [];
+W_T = [];
+
+figure(Name="W_P Bode Plot");
+bodemag(1/W_P, 'b'); 
+grid on;
+title('W_P');
+legend('1/W_p');
+
+%%
+
+% Controller design
+[K, CL, Gam, INFO] = mixsyn(G_td, W_P, W_K, W_T);
+% Get sensitivity and complementary sensitivity function
+S = (1 + G_td*K)^-1;
+T = G_td*K*(1 + G_td*K)^-1;
+
+[mag_S, ~, w_S] = bode(S);
+[mag_T, ~, w_T] = bode(CL);
+[mag_K, ~, w_K] = bode(K);
+
+% Plot both S & T in one bode plot
+
+figureName="S and T Bode Plot";
+bodemag(S, 'r', T, 'b'); 
+grid on;
+title('S and T');
+legend('S (Sensitivity)', 'T (Complementary Sensitivity)');
+
+% Plot K bode plot
+figure(Name="Controller Bode Plot");
+bodemag(K, 'g'); 
+grid on;
+title('K');
+legend('K (Controller)');
+
+figure(Name="Step Response");
+
+step(T); grid on;
+
