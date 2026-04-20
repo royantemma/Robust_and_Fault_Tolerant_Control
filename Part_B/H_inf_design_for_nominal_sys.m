@@ -103,3 +103,7 @@ figure(Name="Step Response");
 
 step(T); grid on;
 
+figure(Name="Nyquist");
+
+nyquist(S)
+
