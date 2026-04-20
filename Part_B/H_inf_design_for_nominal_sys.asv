@@ -63,7 +63,7 @@ omega_B = 3;
 A = 10^-9;
 M = 1;
 W_P = (s/M + omega_B)/(s+omega_B*A);
-W_K = 1/2;
+W_K = [];
 W_T = [];
 
 figure(Name="W_P Bode Plot");
@@ -76,7 +76,6 @@ legend('1/W_p');
 
 % Optimal Controller design
 [K, CL, Gam, INFO] = mixsyn(G_td, W_P, W_K, W_T);
-
 % Get sensitivity and complementary sensitivity function
 S = (1 + G_td*K)^-1;
 T = G_td*K*(1 + G_td*K)^-1;
@@ -104,40 +103,11 @@ figure(Name="Step Response");
 
 step(T); grid on;
 
-
-figure(Name="Nyquist");
-nyquist(S)
-
 % Relaxed design
 
 alpha = 1.05;   % 5% relaxation
 
 W_P2 = W_P / alpha;
-W_T2 = W_T / alpha;
-W_K2 = W_K;
+W_K2 = W_K;     % usually leave control weight unchanged
 
 [K2, CL2, gam2] = mixsyn(G_td, W_P2, W_K2, W_T2);
-
-% Get sensitivity and complementary sensitivity function
-S2 = (1 + G_td*K2)^-1;
-T2 = G_td*K2*(1 + G_td*K2)^-1;
-
-% Plot both S & T in one bode plot
-
-figureName="S and T Bode Plot";
-bodemag(S, 'r', T, 'b', S2, 'y--', T2, 'g--'); 
-grid on;
-title('S and T');
-legend('S (Sensitivity)', 'T (Complementary Sensitivity)', 'S2 (Sensitivity)', 'T2 (Complementary Sensitivity)');
-
-% Plot K bode plot
-figure(Name="Controller Bode Plot");
-bodemag(K, 'g', K2, 'b--'); 
-grid on;
-title('K');
-legend('K (Controller)','K2 (Controller)');
-
-figure(Name="Step Response");
-
-step(T, 'r', T2, 'b--'); grid on;
-
