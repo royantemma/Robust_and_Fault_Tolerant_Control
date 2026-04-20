@@ -42,7 +42,7 @@ C = [  1 0 0 0 0 0
 
 D = zeros(3,2);
 
-C_td = [1 0 0 0 0 0];
+C_td = [0 0 0 0 1 0];
 
 B_td = B(:,1);
 
@@ -80,9 +80,9 @@ legend('1/W_p');
 S = (1 + G_td*K)^-1;
 T = G_td*K*(1 + G_td*K)^-1;
 
-[mag_S, ~, w_S] = bode(S);
-[mag_T, ~, w_T] = bode(CL);
-[mag_K, ~, w_K] = bode(K);
+%[mag_S, ~, w_S] = bode(S);
+%[mag_T, ~, w_T] = bode(CL);
+%[mag_K, ~, w_K] = bode(K);
 
 % Plot both S & T in one bode plot
 
