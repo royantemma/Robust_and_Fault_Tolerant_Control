@@ -3,6 +3,7 @@
 %% Controller Design
 clc; close all; clear;
 load('ECP_values.mat');
+w = logspace(-6,4,100);
 
 %% Get model
 
@@ -75,25 +76,25 @@ u = K*S;
 
 % Plots
 figure(Name="Sensitivity vs Weight");
-bodemag(S, 'b', 1/W_P, 'r'); 
+bodemag(S, 'b', 1/W_P, 'r', w); 
 grid on;
 title('Sensitivity vs Weight');
 legend('S','1/W_P');
 
 figure(Name="Controller Bode Plot");
-bodemag(K*S, 'b', 1/W_K, 'r'); 
+bodemag(K*S, 'b', 1/W_K, 'r', w); 
 grid on;
 title('Control Effort');
 legend('KS', '1/W_K');
 
 figure(Name="Loop Transfer L Bode Plot");
-bodemag(L, 'g'); 
+bodemag(L, 'g', w); 
 grid on;
 title('Loop Transfer L');
 legend('L');
 
 figure(Name="Controller Bode Plot");
-bodemag(K, 'g'); 
+bodemag(K, 'g', w); 
 grid on;
 title('K');
 legend('K (Controller)');
