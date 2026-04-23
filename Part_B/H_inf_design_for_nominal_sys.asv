@@ -56,10 +56,10 @@ close all;
 
 % Weights
 omega_B = 1;
-A = 10^-6;
+A = 10^-9;
 M = 2;
 
-W_P = 2.5 * (s/M + omega_B)*(s/M + 0.5)/((s+omega_B*A)*(s+0.5));
+W_P = 2.5 * (s/M + omega_B)*(s/M + 0.5)/((s+omega_B*A)*(s+0.005)*(s+0.0005)) ; %cutband filter
 W_K = 0.5 * (s/2 + 1)^2 / ((s/20 + 1)^2);
 W_T = [];
 
@@ -93,7 +93,7 @@ title('Loop Transfer L');
 legend('L');
 
 figure(Name="Controller Bode Plot");
-bodemag(K, 'g', G_td, 'b'); 
+bodemag(K, 'g'); 
 grid on;
 title('K');
 legend('K (Controller)');
@@ -109,7 +109,7 @@ grid on;
 title('Control Input');
 
 figure(Name="Nyquist");
-nyquist(S);
+nyquist(S)
 
 % Relaxed design
 
@@ -127,7 +127,7 @@ T2 = G_td*K2*(1 + G_td*K2)^-1;
 
 % Plot both S & T in one bode plot
 
-figureName="S and T Bode Plot";
+figure(Name="S and T Bode Plot");
 bodemag(S, 'r', T, 'b', S2, 'y--', T2, 'g--'); 
 grid on;
 title('S and T');
