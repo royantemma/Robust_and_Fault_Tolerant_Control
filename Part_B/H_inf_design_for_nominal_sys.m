@@ -50,7 +50,7 @@ D_td = zeros(1,1);
 
 G_td = tf(num_td, den_td);
 
-%% Mixed sensitivity setup
+%% Question 9 Mixed sensitivity setup
 close all;
 % It is going to be difficult and take some time - start simple and
 % increase the order of the weight function 2nd or maybe higher
@@ -112,13 +112,13 @@ title('Control Input');
 figure(Name="Nyquist");
 nyquist(S)
 
-% Relaxed design
+%% Relaxed design
 
 alpha = 1.05;   % 5% relaxation
 
 W_P2 = W_P / alpha;
 W_T2 = W_T / alpha;
-W_K2 = W_K;
+W_K2 = W_K / alpha;
 
 [K2, CL2, gam2] = mixsyn(G_td, W_P2, W_K2, W_T2);
 
@@ -145,7 +145,7 @@ figure(Name="Step Response");
 
 step(T, 'r', T2, 'b--'); grid on;
 
-%% Reduction of controller order
+%% Question 10 Reduction of controller order
 close all;
 
 n_red = 6;
@@ -171,14 +171,14 @@ title('Pole-Zero Map Comparison');
 
 % Controllers comparison
 figure;
-bodemag(K, K_red);
+bodemag(K, K_red, w);
 grid on;
 legend('Full K','Reduced K');
 title('Controller Magnitude Comparison');
 
 % Closed-Loop comparison
 figure;
-bodemag(T, T_red);
+bodemag(T, T_red, w);
 grid on;
 legend('Full CL','Reduced CL');
 title('Closed-loop Frequency Response');
@@ -189,7 +189,7 @@ grid on;
 legend('Full','Reduced');
 title('Step Response Comparison');
 
-%% H2 controller design
+%% Question 11 H2 controller design
 close all;
 % H2 design (approximate using mixsyn with large gamma)
 gamRange = [50,50];
@@ -214,3 +214,102 @@ title('Closed-loop Comparison');
 figure; step(T, T_H2); grid on;
 legend('Hinf','H2');
 title('Step Response Comparison');
+
+%% Question 13 Robustness analysis
+close all;
+
+L_red = G_td * K_red;
+S_red = feedback(1,L_red);
+
+% Condition : |WI * T| < 1  → max WI = 1/|T|
+
+[mag_T,~,w] = bode(T);
+mag_T = squeeze(mag_T);
+
+WI_max = 1 ./ mag_T;
+
+figure;
+loglog(w, WI_max);
+grid on;
+title('Maximum multiplicative uncertainty |W_I|');
+xlabel('Frequency (rad/s)');
+ylabel('|W_I|');
+
+
+%% Question 14 Model uncertainty
+close all;
+
+J1_new = 0.0325;
+
+A_new = [ 0 1 0 0 0 0
+         -k_1/J1_new -b_1/J1_new k_1/J1_new 0 0 0
+          0 0 0 1 0 0
+          k_1/J_2 0 -(k_1+k_2)/J_2 -b_2/J_2 k_2/J_2 0
+          0 0 0 0 0 1
+          0 0 k_2/J_3 0 -k_2/J_3 -b_3/J_3];
+
+[num_new,den_new] = ss2tf(A_new,B(:,1),C_td,D_td);
+G_new = tf(num_new,den_new);
+
+% Multiplicative uncertainty
+Delta = (G_new - G_td) / G_td;
+
+[mag_D,~,w] = bode(Delta);
+mag_D = squeeze(mag_D);
+
+figure;
+loglog(w, mag_D);
+grid on;
+title('Lower bound for |W_I|');
+xlabel('Frequency (rad/s)');
+ylabel('|Δ|');
+
+%% Question 15 Hinf design with uncertainty
+close all;
+
+% Uncertainty weight (given)
+WI = 0.833*s / (s + 0.089);
+
+% Weight functions
+omega_B = 1;
+A = 10^-9;
+M = 2;
+
+W_P = 2.3 * (s/M + omega_B)*(s/M + 0.5)/((s+omega_B*A)*(s+0.001));
+W_K = 0.5 * (s/2 + 1)^2 / ((s/20 + 1)^2);
+W_T = WI;
+
+% Optimal Controller design
+[K_unc,CL_unc,gamma_unc] = mixsyn(G_td, W_P, W_K, W_T);
+gamma_unc
+
+% Get sensitivity and complementary sensitivity function
+L_unc = G_td * K_unc;
+S_unc = feedback(1,L_unc);
+T_unc = feedback(L_unc,1);
+
+% Plots
+figure;
+bodemag(S_unc, 1/W_P);
+grid on;
+title('Sensitivity vs weight');
+
+figure;
+bodemag(K_unc*S_unc, 1/W_K);
+grid on;
+title('Control effort');
+
+figure;
+bodemag(T_unc, 1/W_T);
+grid on;
+title('Complementary sensitivity');
+
+figure;
+bodemag(K_unc);
+grid on;
+title('Controller');
+
+figure;
+step(T_unc);
+grid on;
+title('Step response');
