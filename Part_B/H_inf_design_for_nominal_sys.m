@@ -10,7 +10,8 @@ w = logspace(-6,4,100);
 s = tf("s");
 
 % Physical system parameters
-J_1 = ECP_values(1);            % Disk 1 inertia kgm^2
+%J_1 = ECP_values(1);            % Disk 1 inertia kgm^
+J_1 = 0.0325;
 J_2 = ECP_values(2);            % Disk 2 inertia kgm^2
 J_3 = ECP_values(3);            % Disk 3 inertia kgm^2
 k_1 = ECP_values(4);            % Shaft 1-2 stiffness Nm/rad
@@ -20,7 +21,8 @@ b_2 = mean(ECP_values([8 9]));  % Disk 2 damping and friction Nms/rad
 b_3 = mean(ECP_values([10 11]));% Disk 3 damping and friction Nms/rad
 T_Cp = ECP_values(12);          % Disk 1 Coulomb friction in positive direction
 T_Cm = ECP_values(13);          % Disk 1 Coulomb friction in negative direction
-
+atan_scale = 100;               % Sign approximation factor
+w_th = 0.75;                    % Threshold angular velocity rad/s
 
 A = [ 0 1 0 0 0 0
       -k_1/J_1 -b_1/J_1 k_1/J_1 0 0 0
@@ -42,6 +44,7 @@ C = [  1 0 0 0 0 0
 
 D = zeros(3,2);
 
+x_0 = zeros(1,6);
 C_td = [0 0 0 0 1 0];
 B_td = B(:,1);
 D_td = zeros(1,1);
@@ -223,17 +226,12 @@ S_red = feedback(1,L_red);
 
 % Condition : |WI * T| < 1  → max WI = 1/|T|
 
-[mag_T,~,w] = bode(T);
-mag_T = squeeze(mag_T);
-
-WI_max = 1 ./ mag_T;
+WI_max = 1/T;
 
 figure;
-loglog(w, WI_max);
+bodemag(WI_max,w)
 grid on;
 title('Maximum multiplicative uncertainty |W_I|');
-xlabel('Frequency (rad/s)');
-ylabel('|W_I|');
 
 
 %% Question 14 Model uncertainty
@@ -251,24 +249,23 @@ A_new = [ 0 1 0 0 0 0
 [num_new,den_new] = ss2tf(A_new,B(:,1),C_td,D_td);
 G_new = tf(num_new,den_new);
 
-% Multiplicative uncertainty
-Delta = (G_new - G_td) / G_td;
-
-[mag_D,~,w] = bode(Delta);
-mag_D = squeeze(mag_D);
+T_new = feedback(G_new*K_red,1);
 
 figure;
-loglog(w, mag_D);
+bodemag(w, 1/T_new);
 grid on;
-title('Lower bound for |W_I|');
-xlabel('Frequency (rad/s)');
-ylabel('|Δ|');
+title('New |W_I|');
 
 %% Question 15 Hinf design with uncertainty
 close all;
 
 % Uncertainty weight (given)
 WI = 0.833*s / (s + 0.089);
+
+figure;
+bodemag(WI, 'b', WI_max, 'r', 1/T_new, 'g', w);
+grid on;
+title('Controller');
 
 % Weight functions
 omega_B = 1;
