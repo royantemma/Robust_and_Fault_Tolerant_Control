@@ -10,8 +10,8 @@ w = logspace(-6,4,100);
 s = tf("s");
 
 % Physical system parameters
-%J_1 = ECP_values(1);            % Disk 1 inertia kgm^
-J_1 = 0.0325;
+J_1 = ECP_values(1);            % Disk 1 inertia kgm^
+%J_1 = 0.0325;
 J_2 = ECP_values(2);            % Disk 2 inertia kgm^2
 J_3 = ECP_values(3);            % Disk 3 inertia kgm^2
 k_1 = ECP_values(4);            % Shaft 1-2 stiffness Nm/rad
@@ -246,7 +246,14 @@ A_new = [ 0 1 0 0 0 0
           0 0 0 0 0 1
           0 0 k_2/J_3 0 -k_2/J_3 -b_3/J_3];
 
-[num_new,den_new] = ss2tf(A_new,B(:,1),C_td,D_td);
+B_new = [ 0
+      1/J1_new
+      0
+      0
+      0
+      0];
+
+[num_new,den_new] = ss2tf(A_new,B_new,C_td,D_td);
 G_new = tf(num_new,den_new);
 
 T_new = feedback(G_new*K_red,1);
@@ -263,9 +270,9 @@ close all;
 WI = 0.833*s / (s + 0.089);
 
 figure;
-bodemag(WI, 'b', WI_max, 'r', 1/T_new, 'g', w);
+bodemag(WI, 'g', WI_max, 'r', 1/T_new, 'b', w);
 grid on;
-title('Controller');
+title('Multiplicative uncertainty |W_I|');
 
 % Weight functions
 omega_B = 1;
