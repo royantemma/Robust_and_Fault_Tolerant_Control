@@ -67,7 +67,7 @@ W_T = [];
 
 % Optimal Controller design
 [K, CL, Gam, INFO] = mixsyn(G_td, W_P, W_K, W_T);
-Gam
+Gam;
 
 % Get sensitivity and complementary sensitivity function
 S = (1 + G_td*K)^-1;
@@ -189,63 +189,6 @@ grid on;
 legend('Full','Reduced');
 title('Step Response Comparison');
 
-% %% Question 10 Other methods
-% close all;
-% 
-% n_red = 6;
-% K_red_bal = balred(K, n_red);
-% R = reducespec(K,"modal");
-% R.Mode
-% view(R,"contrib")
-% K_red_trunc = xelim(K,2:4,"Truncate");
-% %K_red_mod = xelim(K,2:4,"Truncate");
-% %getrom(R, Selection=1:6);
-% %K_red_mod = getrom(R,Order=6); 
-% T_red_bal  = feedback(G_td*K_red_bal,1);
-% 
-% 
-% T_red_trunc  = feedback(G_td*K_red_trunc,1);
-% 
-% 
-% % Check stability
-% isstable(T)
-% isstable(T_red_bal)
-% isstable(T_red_trunc)
-% 
-% % Poles and zeros comparison
-% pole(K_red_bal)
-% zero(K_red_bal)
-% 
-% figure;
-% pzmap(K); 
-% hold on;
-% pzmap(K_red_bal);
-% grid on;
-% %pzmap(K_red_mod);
-% legend('Full K','Balanced K','Truncation K');
-% title('Pole-Zero Map Comparison');
-% 
-% % Controllers comparison
-% figure;
-% 
-% bodemag(K,K_red_bal, K_red_trunc, w);
-% grid on;
-% legend('Full K','Balanced K','Truncation K');
-% title('Controller Magnitude Comparison');
-% 
-% % Closed-Loop comparison
-% figure;
-% bodemag(T, T_red_bal,T_red_trunc, w);
-% grid on;
-% legend('Full CL','Balanced CL','Truncation CL');
-% title('Closed-loop Frequency Response');
-% 
-% figure;
-% step(T, T_red_bal, T_red_trunc);
-% grid on;
-% legend('Full K','Balanced K','Truncation K');
-% title('Step Response Comparison');
-
 %% Question 11 H2 controller design
 close all;
 
@@ -279,6 +222,8 @@ close all;
 L_red = G_td * K_red;
 S_red = feedback(1,L_red);
 
+% Condition : |WI * T| < 1  → max WI = 1/|T|
+
 WI_max = 1/T;
 
 figure;
@@ -309,18 +254,28 @@ B_new = [ 0
 [num_new,den_new] = ss2tf(A_new,B_new,C_td,D_td);
 G_new = tf(num_new,den_new);
 
+T_new = feedback(G_new*K_red,1);
 lb = (G_new-G_td)/G_td;
 
 figure;
 bodemag(lb, 'b', WI_max, 'r', w);
 grid on;
 title('Lower bound');
+figure;
+bodemag(w, 1/T_new);
+grid on;
+title('New |W_I|');
 
 %% Question 15 Hinf design with uncertainty
 close all;
 
-% Uncertainty weight
+% Uncertainty weight (given)
 WI = 0.833*s / (s + 0.089);
+
+figure;
+bodemag(WI, 'g', WI_max, 'r', lb, 'b', w);
+grid on;
+title('Multiplicative uncertainty |W_I|');
 
 figure;
 bodemag(WI_max, lb, 'b', WI, 'r', w);
